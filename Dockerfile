@@ -4,8 +4,14 @@ FROM oschwengers/bakta:v1.12.0
 # After CTS unpacks the bundle, the database lives at /ref_data/db/
 ENV BAKTA_DB /ref_data/db
 
-# Bakta is installed via conda at /opt/conda/bin/bakta but conda's bin
-# directory is not on the runtime PATH that runc exec sees, so we use
-# the absolute path here. Without this, CTS jobs fail with:
-#   "exec: \"bakta\": executable file not found in $PATH"
-ENTRYPOINT ["/opt/conda/bin/bakta"]
+# bakta is installed via conda at /opt/conda/bin/bakta. We need conda's bin
+# directory on PATH for two reasons:
+#   1. So `bakta` itself resolves at runc exec
+#   2. So bakta's subprocesses (tRNAscan-SE, prodigal, aragorn, infernal,
+#      hmmer, blast, etc., all also under /opt/conda/bin) resolve when
+#      bakta invokes them by name
+# Setting only ENTRYPOINT to /opt/conda/bin/bakta (as 0.1.1 did) fixes #1
+# but not #2 — bakta would then crash with "tRNAscan-SE not found".
+ENV PATH="/opt/conda/bin:${PATH}"
+
+ENTRYPOINT ["bakta"]
